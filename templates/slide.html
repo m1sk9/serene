@@ -1,0 +1,104 @@
+{% import "macros/prose.html" as macros %}
+{% extends "_base.html" %}
+
+{% block page %}slide{% endblock page %}
+{% block lang -%}
+{%- set slides_section_path = config.extra.slides_section_path | default(value="/slides") | trim_start_matches(pat="/") -%}
+{%- set section_md_path = slides_section_path ~ "/_index.md" -%}
+{%- set section = get_section(path=section_md_path, metadata_only=true) -%}
+{%- if page.extra.lang %}{{page.extra.lang}}{% elif section.extra.lang %}{{section.extra.lang}}{% else %}{{page.lang}}{% endif -%}
+{%- endblock lang %}
+{% block title %}{{ page.title }}{% endblock title %}
+{% block desc %}
+  {% if page.summary %}
+    {% set desc = page.summary %}
+  {% elif page.description %}
+    {% set desc = page.description %}
+  {% elif section.description %}
+    {% set desc = section.description %}
+  {% else %}
+    {% set desc = config.description %}
+  {% endif %}
+  <meta name="description" content="{{ desc }}">
+{% endblock desc %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/web/pdf_viewer.min.css">
+<style>
+  #pdf-container {
+    width: 100%;
+    height: calc(100vh - 200px);
+    min-height: 600px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  #pdf-viewer {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+{% endblock head %}
+
+{% block content %}
+<div id="wrapper">
+  <main>
+    {{ macros::back_link(path = get_url(path=section.path)) }}
+    {% include "_section_title.html" %}
+    <div>
+      <article class="prose">
+        <h1>{{ page.title }}</h1>
+        {% if page.date %}
+        <div id="post-info">
+          <div id="date">
+            <span id="publish">{{ page.date | date(format=section.extra.date_format | default(value="%Y-%m-%d")) }}</span>
+            {% if page.updated and page.updated != page.date -%}
+            <span>Updated on <span id="updated">{{ page.updated | date(format=section.extra.date_format | default(value="%Y-%m-%d")) }}</span></span>
+            {% endif -%}
+          </div>
+
+          {% if page.taxonomies.tags is defined %}
+          <div id="tags">
+            {% for tag in page.taxonomies.tags -%}
+            {% set tag_slugify = tag | slugify -%}
+            <a class="instant" href="{{ config.base_url ~ '/tags/' ~ tag_slugify }}"><span>#</span>{{ tag }}</a>
+            {%- endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if page.extra.pdf_url %}
+        <div id="pdf-container">
+          <iframe id="pdf-viewer" src="https://mozilla.github.io/pdf.js/web/viewer.html?file={{ page.extra.pdf_url | urlencode }}" frameborder="0"></iframe>
+        </div>
+        {% endif %}
+
+        {% if page.content %}
+        <div class="slide-description">
+          {{ page.content | safe }}
+        </div>
+        {% endif %}
+      </article>
+
+      {% if page.extra.reaction is defined %}{% set show_reaction = page.extra.reaction %}{% else %}{% set show_reaction = config.extra.reaction %}{% endif %}
+      {% if show_reaction %}
+      <div class="reaction {{ config.extra.reaction_align }}" data-endpoint="{{ config.extra.reaction_endpoint }}"></div>
+      {% endif %}
+
+      {% if page.extra.comment is defined %}{% set show_comment = page.extra.comment %}{% else %}{% set show_comment = section.extra.comment %}{% endif %}
+      {% if show_comment %}
+      <div class="giscus"></div>
+      {% include "_giscus_script.html" %}
+      {% endif %}
+    </div>
+
+    {% include "_footer.html" %}
+  </main>
+</div>
+{% endblock content %}
+
+{% block script %}
+<script src="/js/lightense.min.js"></script>
+{% endblock script %}
